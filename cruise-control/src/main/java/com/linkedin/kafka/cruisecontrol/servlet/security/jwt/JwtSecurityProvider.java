@@ -10,8 +10,8 @@ import com.linkedin.kafka.cruisecontrol.servlet.security.DefaultRoleSecurityProv
 import com.linkedin.kafka.cruisecontrol.servlet.security.UserStoreAuthorizationService;
 import org.eclipse.jetty.security.Authenticator;
 import org.eclipse.jetty.security.LoginService;
-import org.eclipse.jetty.security.authentication.AuthorizationService;
-import javax.servlet.ServletException;
+import com.linkedin.kafka.cruisecontrol.servlet.security.AuthorizationService;
+import jakarta.servlet.ServletException;
 import java.io.IOException;
 import java.security.cert.CertificateException;
 import java.util.List;

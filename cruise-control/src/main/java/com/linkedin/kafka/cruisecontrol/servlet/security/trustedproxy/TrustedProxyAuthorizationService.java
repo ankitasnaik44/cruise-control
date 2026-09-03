@@ -7,10 +7,10 @@ package com.linkedin.kafka.cruisecontrol.servlet.security.trustedproxy;
 import com.linkedin.kafka.cruisecontrol.servlet.security.DefaultRoleSecurityProvider;
 import com.linkedin.kafka.cruisecontrol.servlet.security.SecurityUtils;
 import org.eclipse.jetty.security.UserStore;
-import org.eclipse.jetty.security.authentication.AuthorizationService;
-import org.eclipse.jetty.server.UserIdentity;
+import com.linkedin.kafka.cruisecontrol.servlet.security.AuthorizationService;
+import org.eclipse.jetty.security.UserIdentity;
 import org.eclipse.jetty.util.component.AbstractLifeCycle;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.regex.Pattern;
 

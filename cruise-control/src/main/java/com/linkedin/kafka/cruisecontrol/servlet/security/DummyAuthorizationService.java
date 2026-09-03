@@ -4,13 +4,12 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.security;
 
-import org.eclipse.jetty.security.SpnegoUserIdentity;
-import org.eclipse.jetty.security.SpnegoUserPrincipal;
-import org.eclipse.jetty.security.authentication.AuthorizationService;
-import org.eclipse.jetty.server.UserIdentity;
+import org.eclipse.jetty.security.RoleDelegateUserIdentity;
+import org.eclipse.jetty.security.SPNEGOUserPrincipal;
+import org.eclipse.jetty.security.UserIdentity;
 import org.eclipse.jetty.util.security.Credential;
+import jakarta.servlet.http.HttpServletRequest;
 import javax.security.auth.Subject;
-import javax.servlet.http.HttpServletRequest;
 import java.security.Principal;
 
 public class DummyAuthorizationService implements AuthorizationService {
@@ -28,13 +27,13 @@ public class DummyAuthorizationService implements AuthorizationService {
     }
 
     private UserIdentity createUserIdentity(String username) {
-        Principal userPrincipal = new SpnegoUserPrincipal(username, "");
+        Principal userPrincipal = new SPNEGOUserPrincipal(username, "");
         Subject subject = new Subject();
         subject.getPrincipals().add(userPrincipal);
         subject.getPrivateCredentials().add(NO_CREDENTIAL);
         subject.setReadOnly();
 
-        return new SpnegoUserIdentity(subject, userPrincipal, null);
+        return new RoleDelegateUserIdentity(subject, userPrincipal, null);
     }
 
 }

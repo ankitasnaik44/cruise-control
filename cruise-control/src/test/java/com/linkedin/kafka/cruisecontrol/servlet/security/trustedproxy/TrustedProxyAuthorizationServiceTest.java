@@ -4,9 +4,9 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.security.trustedproxy;
 
-import org.eclipse.jetty.server.UserIdentity;
+import org.eclipse.jetty.security.UserIdentity;
 import org.junit.Test;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.Collections;
 
 import static org.easymock.EasyMock.expect;

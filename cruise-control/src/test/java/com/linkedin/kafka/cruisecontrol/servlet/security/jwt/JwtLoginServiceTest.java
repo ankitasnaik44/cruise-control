@@ -8,10 +8,13 @@ import com.linkedin.kafka.cruisecontrol.servlet.security.SecurityUtils;
 import com.linkedin.kafka.cruisecontrol.servlet.security.UserStoreAuthorizationService;
 import com.nimbusds.jwt.SignedJWT;
 import org.eclipse.jetty.security.UserStore;
-import org.eclipse.jetty.server.UserIdentity;
+import org.eclipse.jetty.security.UserIdentity;
+import org.eclipse.jetty.server.Request;
+import org.eclipse.jetty.server.Session;
 import org.junit.Test;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.Clock;
+import java.util.function.Function;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -39,12 +42,14 @@ public class JwtLoginServiceTest {
     JwtLoginService loginService = new JwtLoginService(new UserStoreAuthorizationService(testUserStore), tokenAndKeys.publicKey(), null);
 
     SignedJWT jwtToken = SignedJWT.parse(tokenAndKeys.token());
-    HttpServletRequest request = mock(HttpServletRequest.class);
+    HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+    Request request = mock(Request.class);
     expect(request.getAttribute(JwtAuthenticator.JWT_TOKEN_REQUEST_ATTRIBUTE)).andReturn(tokenAndKeys.token());
+    expect(request.getAttribute(JwtAuthenticator.HTTP_SERVLET_REQUEST_ATTRIBUTE)).andReturn(httpRequest).anyTimes();
 
-    replay(request);
-    UserIdentity identity = loginService.login(TEST_USER, jwtToken, request);
-    verify(request);
+    replay(request, httpRequest);
+    UserIdentity identity = loginService.login(TEST_USER, jwtToken, request, b -> null);
+    verify(request, httpRequest);
     assertNotNull(identity);
     assertEquals(TEST_USER, identity.getUserPrincipal().getName());
   }
@@ -59,9 +64,9 @@ public class JwtLoginServiceTest {
     JwtLoginService loginService = new JwtLoginService(new UserStoreAuthorizationService(testUserStore), tokenAndKeys2.publicKey(), null);
 
     SignedJWT jwtToken = SignedJWT.parse(tokenAndKeys.token());
-    HttpServletRequest request = mock(HttpServletRequest.class);
+    Request request = mock(Request.class);
 
-    UserIdentity identity = loginService.login(TEST_USER, jwtToken, request);
+    UserIdentity identity = loginService.login(TEST_USER, jwtToken, request, b -> null);
     assertNull(identity);
   }
 
@@ -74,9 +79,9 @@ public class JwtLoginServiceTest {
         new UserStoreAuthorizationService(testUserStore), tokenAndKeys.publicKey(), Arrays.asList("C", "D"));
 
     SignedJWT jwtToken = SignedJWT.parse(tokenAndKeys.token());
-    HttpServletRequest request = mock(HttpServletRequest.class);
+    Request request = mock(Request.class);
 
-    UserIdentity identity = loginService.login(TEST_USER, jwtToken, request);
+    UserIdentity identity = loginService.login(TEST_USER, jwtToken, request, b -> null);
     assertNull(identity);
   }
 
@@ -88,9 +93,9 @@ public class JwtLoginServiceTest {
     JwtLoginService loginService = new JwtLoginService(new UserStoreAuthorizationService(testUserStore), tokenAndKeys.publicKey(), null);
 
     SignedJWT jwtToken = SignedJWT.parse(tokenAndKeys.token());
-    HttpServletRequest request = mock(HttpServletRequest.class);
+    Request request = mock(Request.class);
 
-    UserIdentity identity = loginService.login(TEST_USER, jwtToken, request);
+    UserIdentity identity = loginService.login(TEST_USER, jwtToken, request, b -> null);
     assertNull(identity);
   }
 
@@ -102,12 +107,14 @@ public class JwtLoginServiceTest {
     JwtLoginService loginService = new JwtLoginService(new UserStoreAuthorizationService(testUserStore), tokenAndKeys.publicKey(), null);
 
     SignedJWT jwtToken = SignedJWT.parse(tokenAndKeys.token());
-    HttpServletRequest request = mock(HttpServletRequest.class);
+    HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+    Request request = mock(Request.class);
     expect(request.getAttribute(JwtAuthenticator.JWT_TOKEN_REQUEST_ATTRIBUTE)).andReturn(tokenAndKeys.token());
+    expect(request.getAttribute(JwtAuthenticator.HTTP_SERVLET_REQUEST_ATTRIBUTE)).andReturn(httpRequest).anyTimes();
 
-    replay(request);
-    UserIdentity identity = loginService.login(TEST_USER, jwtToken, request);
-    verify(request);
+    replay(request, httpRequest);
+    UserIdentity identity = loginService.login(TEST_USER, jwtToken, request, b -> null);
+    verify(request, httpRequest);
     assertNotNull(identity);
     assertEquals(TEST_USER, identity.getUserPrincipal().getName());
     assertTrue(loginService.validate(identity));
@@ -124,12 +131,14 @@ public class JwtLoginServiceTest {
         new UserStoreAuthorizationService(testUserStore), tokenAndKeys.publicKey(), null, fixedClock);
 
     SignedJWT jwtToken = SignedJWT.parse(tokenAndKeys.token());
-    HttpServletRequest request = mock(HttpServletRequest.class);
+    HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+    Request request = mock(Request.class);
     expect(request.getAttribute(JwtAuthenticator.JWT_TOKEN_REQUEST_ATTRIBUTE)).andReturn(tokenAndKeys.token());
+    expect(request.getAttribute(JwtAuthenticator.HTTP_SERVLET_REQUEST_ATTRIBUTE)).andReturn(httpRequest).anyTimes();
 
-    replay(request);
-    UserIdentity identity = loginService.login(TEST_USER, jwtToken, request);
-    verify(request);
+    replay(request, httpRequest);
+    UserIdentity identity = loginService.login(TEST_USER, jwtToken, request, b -> null);
+    verify(request, httpRequest);
     assertNotNull(identity);
     assertEquals(TEST_USER, identity.getUserPrincipal().getName());
     loginService.setClock(Clock.offset(fixedClock, Duration.ofSeconds(20)));

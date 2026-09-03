@@ -14,19 +14,19 @@ import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.security.HashLoginService;
+import org.eclipse.jetty.security.UserIdentity;
+import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Request;
+import org.eclipse.jetty.server.Response;
 import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.server.UserIdentity;
-import org.eclipse.jetty.server.handler.AbstractHandler;
+import org.eclipse.jetty.util.Callback;
+import org.eclipse.jetty.util.Fields;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.OutputStream;
 import java.math.BigInteger;
 import java.net.HttpURLConnection;
@@ -61,7 +61,11 @@ public class JwtSecurityProviderIntegrationTest extends CruiseControlIntegration
   private final Server _tokenProviderServer;
   private final File _publicKeyFile;
 
-  class TestAuthenticatorHandler extends AbstractHandler {
+  /**
+   * Jetty 12 handler that acts as a mock token provider: validates credentials and sets a JWT cookie.
+   * Uses the ee10 adapter pattern to read HttpServletRequest parameters.
+   */
+  class TestAuthenticatorHandler extends Handler.Abstract {
 
     private final HashLoginService _loginService;
 
@@ -72,19 +76,24 @@ public class JwtSecurityProviderIntegrationTest extends CruiseControlIntegration
     }
 
     @Override
-    public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response) throws IOException {
-      String username = request.getParameter(TEST_USERNAME_KEY);
-      String password = request.getParameter(TEST_PASSWORD_KEY);
-
-      String cruiseControlUrl = request.getParameter(ORIGIN);
+    public boolean handle(Request request, Response response, Callback callback) throws Exception {
+      // In Jetty 12, query params are read from the URI via Request.getParameters()
+      Fields params = Request.getParameters(request);
+      String username = params.getValue(TEST_USERNAME_KEY);
+      String password = params.getValue(TEST_PASSWORD_KEY);
+      String cruiseControlUrl = params.getValue(ORIGIN);
 
       System.out.println(String.format("Handling login: %s %s %s", username, password, cruiseControlUrl));
-      UserIdentity identity = _loginService.login(username, password, request);
+      UserIdentity identity = _loginService.login(username, password, request, b -> null);
       if (identity != null) {
-        response.addCookie(new Cookie(JWT_TOKEN_COOKIE_NAME, _tokenAndKeys.token()));
+        // Set JWT cookie via Jetty 12 response Set-Cookie header
+        response.getHeaders().add(org.eclipse.jetty.http.HttpHeader.SET_COOKIE,
+            JWT_TOKEN_COOKIE_NAME + "=" + _tokenAndKeys.token());
+        callback.succeeded();
       } else {
-        response.sendError(HttpServletResponse.SC_FORBIDDEN);
+        Response.writeError(request, response, callback, HttpServletResponse.SC_FORBIDDEN);
       }
+      return true;
     }
 
     @Override

@@ -7,10 +7,10 @@ plugins {
   id "com.jfrog.artifactory"
   id "idea"
   id "jacoco" // Java Code Coverage plugin
-  id "com.github.ben-manes.versions" version "0.42.0"
-  id "com.github.spotbugs" version "6.0.25" apply false
+  id "com.github.ben-manes.versions" version "0.61.0"
+  id "com.github.spotbugs" version "6.5.11" apply false
   id "checkstyle"
-  id "org.openapi.generator" version "5.3.0"
+  id "org.openapi.generator" version "7.14.0"
 }
 
 group = 'com.linkedin.cruisecontrol'
@@ -95,8 +95,8 @@ subprojects {
   apply plugin: "com.github.spotbugs"
   apply plugin: 'jacoco'
 
-  // This project requires Java 17
-  sourceCompatibility = JavaVersion.VERSION_17
+  // This project requires Java 21
+  sourceCompatibility = JavaVersion.VERSION_21
 
   task sourcesJar(type: Jar, dependsOn: classes) {
     archiveClassifier.set("sources")
@@ -185,10 +185,11 @@ project(':cruise-control-core') {
       exclude group: 'log4j', module: 'log4j'
       exclude group: 'ch.qos.logback'
     }
-    implementation "org.slf4j:slf4j-api:1.7.36"
-    implementation "org.apache.logging.log4j:log4j-slf4j-impl:2.17.2"
+    implementation "org.slf4j:slf4j-api:2.0.17"
+    implementation "org.apache.logging.log4j:log4j-slf4j2-impl:2.26.0"
     implementation 'org.apache.commons:commons-math3:3.6.1'
-    api "org.eclipse.jetty:jetty-servlet:${jettyVersion}"
+    api "org.eclipse.jetty.ee10:jetty-ee10-servlet:${jettyVersion}"
+    api "jakarta.servlet:jakarta.servlet-api:6.1.0"
 
     api "io.vertx:vertx-core:${vertxVersion}"
     api "io.vertx:vertx-web:${vertxVersion}"
@@ -286,38 +287,37 @@ project(':cruise-control') {
 
     api project(':cruise-control-metrics-reporter')
     api project(':cruise-control-core')
-    implementation "org.slf4j:slf4j-api:1.7.36"
-    implementation "org.apache.logging.log4j:log4j-slf4j-impl:2.17.2"
+    implementation "org.slf4j:slf4j-api:2.0.17"
+    implementation "org.apache.logging.log4j:log4j-slf4j2-impl:2.26.0"
     implementation "io.netty:netty-handler:${nettyVersion}"
     implementation "io.netty:netty-transport-native-epoll:${nettyVersion}"
     api "org.apache.kafka:kafka_$scalaBinaryVersion:$kafkaVersion"
     api "org.apache.kafka:kafka-server:$kafkaVersion"
     api "org.apache.kafka:kafka-server-common:$kafkaVersion"
     api "org.apache.kafka:kafka-clients:$kafkaVersion"
-    // Add following dependency when upgrading to Kafka 3.5
     api "org.apache.kafka:kafka-storage:$kafkaVersion"
     implementation "org.scala-lang:scala-library:$scalaVersion"
     implementation 'org.apache.commons:commons-math3:3.6.1'
-    implementation 'org.apache.httpcomponents:httpclient:4.5.13'
-    implementation 'commons-codec:commons-codec:1.15'
-    implementation 'com.google.code.gson:gson:2.9.0'
+    implementation 'org.apache.httpcomponents:httpclient:4.5.14'
+    implementation 'commons-codec:commons-codec:1.22.0'
+    implementation 'com.google.code.gson:gson:2.14.0'
     implementation "org.eclipse.jetty:jetty-server:${jettyVersion}"
-    implementation 'io.dropwizard.metrics:metrics-jmx:4.2.9'
-    implementation 'com.nimbusds:nimbus-jose-jwt:10.0.2'
-    implementation 'io.swagger.parser.v3:swagger-parser-v3:2.1.16'
-    implementation 'io.github.classgraph:classgraph:4.8.141'
+    implementation "org.eclipse.jetty:jetty-security:${jettyVersion}"
+    implementation 'io.dropwizard.metrics:metrics-jmx:4.2.33'
+    implementation 'com.nimbusds:nimbus-jose-jwt:10.3'
+    implementation 'io.swagger.parser.v3:swagger-parser-v3:2.1.27'
+    implementation 'io.github.classgraph:classgraph:4.8.180'
     implementation 'com.google.code.findbugs:jsr305:3.0.2'
-    // Temporary pin for vulnerability
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.19.0'
     api "io.vertx:vertx-web-openapi:${vertxVersion}"
     api "io.vertx:vertx-core:${vertxVersion}"
     api "io.vertx:vertx-web:${vertxVersion}"
     api "io.vertx:vertx-junit5:${vertxVersion}"
-    api 'io.swagger.core.v3:swagger-annotations:2.0.2'
-    api 'io.swagger.core.v3:swagger-core:2.0.2'
-    api 'com.google.guava:guava:32.1.3-jre'
-    api 'org.json:json:20231013'
-    api 'org.xerial.snappy:snappy-java:1.1.10.5'
+    api 'io.swagger.core.v3:swagger-annotations:2.2.31'
+    api 'io.swagger.core.v3:swagger-core:2.2.31'
+    api 'com.google.guava:guava:33.4.8-jre'
+    api 'org.json:json:20250517'
+    api 'org.xerial.snappy:snappy-java:1.1.10.8'
 
     constraints {
       implementation("commons-beanutils:commons-beanutils:1.11.0") {
@@ -329,14 +329,15 @@ project(':cruise-control') {
     testImplementation project(path: ':cruise-control-core', configuration: 'testOutput')
     testImplementation "org.scala-lang:scala-library:$scalaVersion"
     testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.easymock:easymock:5.5.0'
+    testImplementation 'org.easymock:easymock:5.6.0'
     testImplementation "org.apache.kafka:kafka_$scalaBinaryVersion:$kafkaVersion:test"
     testImplementation "org.apache.kafka:kafka-clients:$kafkaVersion:test"
     testImplementation 'commons-io:commons-io:2.22.0'
-    testImplementation 'org.apache.httpcomponents:httpclient:4.5.13:tests'
-    testImplementation 'org.bouncycastle:bcpkix-jdk15on:1.70'
-    testImplementation 'org.apache.kerby:kerb-simplekdc:2.1.0'
-    testImplementation 'com.jayway.jsonpath:json-path:2.7.0'
+    testImplementation 'org.apache.httpcomponents:httpclient:4.5.14:tests'
+    testImplementation 'org.bouncycastle:bcpkix-jdk18on:1.80'
+    testImplementation 'org.bouncycastle:bcprov-jdk18on:1.80'
+    testImplementation 'org.apache.kerby:kerb-simplekdc:2.1.1'
+    testImplementation 'com.jayway.jsonpath:json-path:2.10.0'
     testImplementation 'org.powermock:powermock-module-junit4:2.0.9'
     testImplementation 'org.powermock:powermock-api-easymock:2.0.9'
     testImplementation "org.testcontainers:kafka:$testcontainersVersion"
@@ -463,18 +464,18 @@ project(':cruise-control-metrics-reporter') {
       exclude group: 'ch.qos.logback'
     }
 
-    implementation "org.slf4j:slf4j-api:1.7.36"
+    implementation "org.slf4j:slf4j-api:2.0.17"
     implementation "com.yammer.metrics:metrics-core:2.2.0"
-    implementation "org.apache.logging.log4j:log4j-slf4j-impl:2.17.2"
+    implementation "org.apache.logging.log4j:log4j-slf4j2-impl:2.26.0"
     implementation "org.apache.kafka:kafka_$scalaBinaryVersion:$kafkaVersion"
     implementation "org.apache.kafka:kafka-server:$kafkaVersion"
     implementation "org.apache.kafka:kafka-clients:$kafkaVersion"
     implementation 'com.google.code.findbugs:jsr305:3.0.2'
-    // Temporary pin for vulnerability
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.19.0'
 
     testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.bouncycastle:bcpkix-jdk15on:1.70'
+    testImplementation 'org.bouncycastle:bcpkix-jdk18on:1.80'
+    testImplementation 'org.bouncycastle:bcprov-jdk18on:1.80'
     testImplementation 'org.powermock:powermock-module-junit4:2.0.9'
     testImplementation 'org.powermock:powermock-api-easymock:2.0.9'
     testImplementation "org.apache.kafka:kafka-clients:$kafkaVersion:test"

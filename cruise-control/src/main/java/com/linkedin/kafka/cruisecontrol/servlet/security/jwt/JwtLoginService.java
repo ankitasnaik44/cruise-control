@@ -14,13 +14,13 @@ import com.nimbusds.jwt.SignedJWT;
 import org.eclipse.jetty.security.DefaultIdentityService;
 import org.eclipse.jetty.security.IdentityService;
 import org.eclipse.jetty.security.LoginService;
-import org.eclipse.jetty.security.authentication.AuthorizationService;
-import org.eclipse.jetty.server.UserIdentity;
+import org.eclipse.jetty.security.UserIdentity;
 import org.eclipse.jetty.util.component.AbstractLifeCycle;
 import org.eclipse.jetty.util.component.LifeCycle;
+import org.eclipse.jetty.server.Request;
+import org.eclipse.jetty.server.Session;
 import javax.security.auth.Subject;
-import javax.servlet.ServletRequest;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -99,11 +99,8 @@ public class JwtLoginService extends AbstractLifeCycle implements LoginService {
   }
 
   @Override
-  public UserIdentity login(String username, Object credentials, ServletRequest request) {
+  public UserIdentity login(String username, Object credentials, Request request, java.util.function.Function<Boolean, Session> getOrCreateSession) {
     if (!(credentials instanceof SignedJWT)) {
-      return null;
-    }
-    if (!(request instanceof HttpServletRequest)) {
       return null;
     }
 
@@ -119,7 +116,11 @@ public class JwtLoginService extends AbstractLifeCycle implements LoginService {
     }
     if (valid) {
       String serializedToken = (String) request.getAttribute(JwtAuthenticator.JWT_TOKEN_REQUEST_ATTRIBUTE);
-      UserIdentity rolesDelegate = _authorizationService.getUserIdentity((HttpServletRequest) request, username);
+      HttpServletRequest httpRequest = (HttpServletRequest) request.getAttribute(JwtAuthenticator.HTTP_SERVLET_REQUEST_ATTRIBUTE);
+      if (httpRequest == null) {
+        return null;
+      }
+      UserIdentity rolesDelegate = _authorizationService.getUserIdentity(httpRequest, username);
       if (rolesDelegate == null) {
         return null;
       } else {

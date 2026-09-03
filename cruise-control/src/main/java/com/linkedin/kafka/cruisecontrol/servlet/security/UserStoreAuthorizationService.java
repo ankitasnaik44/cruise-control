@@ -6,10 +6,10 @@ package com.linkedin.kafka.cruisecontrol.servlet.security;
 
 import org.eclipse.jetty.security.PropertyUserStore;
 import org.eclipse.jetty.security.UserStore;
-import org.eclipse.jetty.security.authentication.AuthorizationService;
-import org.eclipse.jetty.server.UserIdentity;
+import com.linkedin.kafka.cruisecontrol.servlet.security.AuthorizationService;
+import org.eclipse.jetty.security.UserIdentity;
 import org.eclipse.jetty.util.component.AbstractLifeCycle;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * Can be used for authorization scenarios where a file can be created in a secure location with a relatively

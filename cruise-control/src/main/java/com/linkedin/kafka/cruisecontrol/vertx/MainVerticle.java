@@ -51,12 +51,14 @@ public class MainVerticle extends AbstractVerticle {
 
     _endPoints = new VertxRequestHandler(_asynckafkaCruiseControl, _dropwizardMetricRegistry);
 
-    RouterBuilder.create(vertx, Objects.requireNonNull(this.getClass().getClassLoader().getResource("yaml/base.yaml")).toString(), asyncResult -> {
-      if (!asyncResult.succeeded()) {
-        throw new RuntimeException(asyncResult.cause());
-      } else {
+    String contractPath = Objects.requireNonNull(
+        this.getClass().getClassLoader().getResource("yaml/base.yaml")).toString();
+
+    RouterBuilder.create(vertx, contractPath, ar -> {
+      if (ar.succeeded()) {
+        RouterBuilder builder = ar.result();
         _server = vertx.createHttpServer(createOptions());
-        _server.requestHandler(buildRouter(asyncResult.result()));
+        _server.requestHandler(buildRouter(builder));
         _server.listen(result -> {
           if (result.succeeded()) {
             startPromise.complete();
@@ -64,6 +66,8 @@ public class MainVerticle extends AbstractVerticle {
             startPromise.fail(result.cause());
           }
         });
+      } else {
+        startPromise.fail(ar.cause());
       }
     });
   }
@@ -96,10 +100,7 @@ public class MainVerticle extends AbstractVerticle {
     builder.operation("admin").handler(_endPoints::handle);
     builder.operation("rightsize").handler(_endPoints::handle);
     builder.operation("permissions").handler(_endPoints::handle);
-    builder.rootHandler(StaticHandler
-            .create()
-            .setCachingEnabled(false)
-            .setWebRoot("webroot/"));
+    builder.mountServicesFromExtensions();
     Router router = builder.createRouter();
 
     Set<String> allowedHeaders = new HashSet<>();
@@ -120,7 +121,6 @@ public class MainVerticle extends AbstractVerticle {
     root.route().produces(APPLICATION_JSON);
     root.route().handler(BodyHandler.create());
 
-    root.route().handler(CorsHandler.create("*").allowedHeaders(allowedHeaders).allowedMethods(allowedMethods));
     root.route().handler(CorsHandler.create("*").allowedHeaders(allowedHeaders).allowedMethods(allowedMethods));
     root.route().handler(SessionHandler.create(LocalSessionStore.create(vertx)));
 

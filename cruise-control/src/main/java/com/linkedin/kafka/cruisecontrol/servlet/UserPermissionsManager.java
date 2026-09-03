@@ -13,7 +13,7 @@ import java.util.Collections;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import org.eclipse.jetty.security.UserStore;
 import org.eclipse.jetty.security.PropertyUserStore;
-import org.eclipse.jetty.security.AbstractLoginService;
+import org.eclipse.jetty.security.RolePrincipal;
 import com.linkedin.kafka.cruisecontrol.config.constants.WebServerConfig;
 import javax.security.auth.Subject;
 import org.slf4j.Logger;
@@ -50,12 +50,12 @@ public class UserPermissionsManager {
 
             for (String user : userNames) {
                 Subject userSubject = userStore.getUserIdentity(user).getSubject();
-                Set<AbstractLoginService.RolePrincipal> roles = userSubject == null
+                Set<RolePrincipal> roles = userSubject == null
                         ? new HashSet<>()
-                        : userSubject.getPrincipals(AbstractLoginService.RolePrincipal.class);
+                        : userSubject.getPrincipals(RolePrincipal.class);
 
                 Set<String> roleNames = roles.stream()
-                        .map(AbstractLoginService.RolePrincipal::getName)
+                        .map(RolePrincipal::getName)
                         .map(String::toUpperCase)
                         .collect(Collectors.toSet());
                 rolesPerUsers.put(user, roleNames);

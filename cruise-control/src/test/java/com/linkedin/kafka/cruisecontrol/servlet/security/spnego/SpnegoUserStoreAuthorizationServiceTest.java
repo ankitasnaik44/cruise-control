@@ -8,7 +8,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.security.DefaultRoleSecurityProv
 import com.linkedin.kafka.cruisecontrol.servlet.security.SecurityUtils;
 import com.linkedin.kafka.cruisecontrol.servlet.security.UserStoreAuthorizationService;
 import org.eclipse.jetty.security.UserStore;
-import org.eclipse.jetty.server.UserIdentity;
+import org.eclipse.jetty.security.UserIdentity;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;

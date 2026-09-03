@@ -7,7 +7,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.security.spnego;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlApp;
 import com.linkedin.kafka.cruisecontrol.servlet.security.MiniKdc;
 import javax.security.auth.Subject;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletResponse;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.security.PrivilegedAction;

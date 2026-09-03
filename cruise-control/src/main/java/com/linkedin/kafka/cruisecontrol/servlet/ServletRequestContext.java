@@ -11,9 +11,8 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils;
 import io.vertx.core.MultiMap;
-import io.vertx.core.http.impl.headers.HeadersMultiMap;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -43,7 +42,7 @@ public class ServletRequestContext implements CruiseControlRequestContext {
 
     private MultiMap getServletHeaders(HttpServletRequest request) {
         Enumeration<String> headerNames = request.getHeaderNames();
-        MultiMap output = new HeadersMultiMap();
+        MultiMap output = MultiMap.caseInsensitiveMultiMap();
         while (headerNames.hasMoreElements()) {
             String header = headerNames.nextElement();
             output.add(header, request.getHeader(header));

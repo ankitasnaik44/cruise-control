@@ -7,17 +7,21 @@ package com.linkedin.kafka.cruisecontrol.servlet.security.trustedproxy;
 import com.linkedin.kafka.cruisecontrol.servlet.security.DefaultRoleSecurityProvider;
 import com.linkedin.kafka.cruisecontrol.servlet.security.SecurityUtils;
 import com.linkedin.kafka.cruisecontrol.servlet.security.spnego.SpnegoLoginServiceWithAuthServiceLifecycle;
-import org.eclipse.jetty.security.SpnegoUserIdentity;
-import org.eclipse.jetty.security.SpnegoUserPrincipal;
+import org.eclipse.jetty.security.RoleDelegateUserIdentity;
+import org.eclipse.jetty.security.SPNEGOUserPrincipal;
 import org.eclipse.jetty.security.UserStore;
-import org.eclipse.jetty.security.authentication.AuthorizationService;
-import org.eclipse.jetty.server.UserIdentity;
+import com.linkedin.kafka.cruisecontrol.servlet.security.AuthorizationService;
+import org.eclipse.jetty.security.UserIdentity;
+import org.eclipse.jetty.server.Request;
+import org.eclipse.jetty.server.Session;
 import org.junit.Test;
 import javax.security.auth.Subject;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.Collections;
+import java.util.function.Function;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DO_AS;
+import static com.linkedin.kafka.cruisecontrol.servlet.security.jwt.JwtAuthenticator.HTTP_SERVLET_REQUEST_ATTRIBUTE;
 import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.anyString;
 import static org.easymock.EasyMock.expect;
@@ -55,22 +59,22 @@ public class TrustedProxyLoginServiceTest {
 
   @Test
   public void testSuccessfulAuthentication() {
-    SpnegoUserPrincipal servicePrincipal = new SpnegoUserPrincipal(TEST_SERVICE_USER, ENCODED_TOKEN);
+    SPNEGOUserPrincipal servicePrincipal = new SPNEGOUserPrincipal(TEST_SERVICE_USER, ENCODED_TOKEN);
     UserIdentity serviceDelegate = mock(UserIdentity.class);
     Subject subject = new Subject(true, Collections.singleton(servicePrincipal), Collections.emptySet(), Collections.emptySet());
-    SpnegoUserIdentity result = new SpnegoUserIdentity(subject, servicePrincipal, serviceDelegate);
-    expect(_mockSpnegoLoginService.login(anyString(), anyObject(), anyObject())).andReturn(result);
+    RoleDelegateUserIdentity result = new RoleDelegateUserIdentity(subject, servicePrincipal, serviceDelegate);
+    expect(_mockSpnegoLoginService.login(anyString(), anyObject(), anyObject(), anyObject())).andReturn(result);
 
     TestAuthorizer userAuthorizer = new TestAuthorizer(TEST_USER);
 
     HttpServletRequest mockRequest = mock(HttpServletRequest.class);
-    expect(mockRequest.getParameter(DO_AS)).andReturn(TEST_USER);
+    expect(mockRequest.getParameter(DO_AS)).andReturn(TEST_USER).anyTimes();
 
     replay(_mockSpnegoLoginService, mockRequest);
 
     TrustedProxyLoginService trustedProxyLoginService = new TrustedProxyLoginService(_mockSpnegoLoginService, _mockFallbackLoginService,
             userAuthorizer, false);
-    UserIdentity doAsIdentity = trustedProxyLoginService.login(null, ENCODED_TOKEN, mockRequest);
+    UserIdentity doAsIdentity = trustedProxyLoginService.login(null, ENCODED_TOKEN, wrapRequest(mockRequest), null);
     assertNotNull(doAsIdentity);
     assertNotNull(doAsIdentity.getUserPrincipal());
     assertEquals(doAsIdentity.getUserPrincipal().getName(), TEST_USER);
@@ -80,63 +84,65 @@ public class TrustedProxyLoginServiceTest {
 
   @Test
   public void testNoDoAsUser() {
-    SpnegoUserPrincipal servicePrincipal = new SpnegoUserPrincipal(TEST_SERVICE_USER, ENCODED_TOKEN);
+    SPNEGOUserPrincipal servicePrincipal = new SPNEGOUserPrincipal(TEST_SERVICE_USER, ENCODED_TOKEN);
     UserIdentity serviceDelegate = mock(UserIdentity.class);
     Subject subject = new Subject(true, Collections.singleton(servicePrincipal), Collections.emptySet(), Collections.emptySet());
-    SpnegoUserIdentity result = new SpnegoUserIdentity(subject, servicePrincipal, serviceDelegate);
-    expect(_mockSpnegoLoginService.login(anyString(), anyObject(), anyObject())).andReturn(result);
+    RoleDelegateUserIdentity result = new RoleDelegateUserIdentity(subject, servicePrincipal, serviceDelegate);
+    expect(_mockSpnegoLoginService.login(anyString(), anyObject(), anyObject(), anyObject())).andReturn(result);
 
     TestAuthorizer userAuthorizer = new TestAuthorizer(TEST_USER);
 
     HttpServletRequest mockRequest = mock(HttpServletRequest.class);
-    replay(_mockSpnegoLoginService);
+    expect(mockRequest.getParameter(DO_AS)).andReturn(null).anyTimes();
+    replay(_mockSpnegoLoginService, mockRequest);
 
     TrustedProxyLoginService trustedProxyLoginService = new TrustedProxyLoginService(_mockSpnegoLoginService, _mockFallbackLoginService,
             userAuthorizer, false);
-    UserIdentity doAsIdentity = trustedProxyLoginService.login(null, ENCODED_TOKEN, mockRequest);
+    UserIdentity doAsIdentity = trustedProxyLoginService.login(null, ENCODED_TOKEN, wrapRequest(mockRequest), null);
     assertNotNull(doAsIdentity);
     assertNotNull(doAsIdentity.getUserPrincipal());
     assertNull(doAsIdentity.getUserPrincipal().getName());
-    assertFalse(((SpnegoUserIdentity) doAsIdentity).isEstablished());
+    assertFalse(((RoleDelegateUserIdentity) doAsIdentity).isEstablished());
     verify(_mockSpnegoLoginService);
   }
 
   @Test
   public void testInvalidAuthServiceUser() {
-    SpnegoUserPrincipal servicePrincipal = new SpnegoUserPrincipal(TEST_SERVICE_USER, ENCODED_TOKEN);
+    SPNEGOUserPrincipal servicePrincipal = new SPNEGOUserPrincipal(TEST_SERVICE_USER, ENCODED_TOKEN);
     Subject subject = new Subject(true, Collections.singleton(servicePrincipal), Collections.emptySet(), Collections.emptySet());
-    SpnegoUserIdentity result = new SpnegoUserIdentity(subject, servicePrincipal, null);
-    expect(_mockSpnegoLoginService.login(anyString(), anyObject(), anyObject())).andReturn(result);
+    RoleDelegateUserIdentity result = new RoleDelegateUserIdentity(subject, servicePrincipal, null);
+    expect(_mockSpnegoLoginService.login(anyString(), anyObject(), anyObject(), anyObject())).andReturn(result);
 
     TestAuthorizer userAuthorizer = new TestAuthorizer(TEST_USER);
 
     HttpServletRequest mockRequest = mock(HttpServletRequest.class);
-    expect(mockRequest.getParameter(DO_AS)).andReturn(TEST_USER);
-    replay(_mockSpnegoLoginService);
+    expect(mockRequest.getParameter(DO_AS)).andReturn(TEST_USER).anyTimes();
+    replay(_mockSpnegoLoginService, mockRequest);
 
     TrustedProxyLoginService trustedProxyLoginService = new TrustedProxyLoginService(_mockSpnegoLoginService, _mockFallbackLoginService,
             userAuthorizer, false);
-    UserIdentity doAsIdentity = trustedProxyLoginService.login(null, ENCODED_TOKEN, mockRequest);
+    UserIdentity doAsIdentity = trustedProxyLoginService.login(null, ENCODED_TOKEN, wrapRequest(mockRequest), null);
     assertNotNull(doAsIdentity);
-    assertFalse(((SpnegoUserIdentity) doAsIdentity).isEstablished());
+    assertFalse(((RoleDelegateUserIdentity) doAsIdentity).isEstablished());
   }
 
   @Test
   public void testFallbackToSpnego() {
-    SpnegoUserPrincipal servicePrincipal = new SpnegoUserPrincipal(TEST_SERVICE_USER, ENCODED_TOKEN);
+    SPNEGOUserPrincipal servicePrincipal = new SPNEGOUserPrincipal(TEST_SERVICE_USER, ENCODED_TOKEN);
     UserIdentity serviceDelegate = mock(UserIdentity.class);
     Subject subject = new Subject(true, Collections.singleton(servicePrincipal), Collections.emptySet(), Collections.emptySet());
-    SpnegoUserIdentity result = new SpnegoUserIdentity(subject, servicePrincipal, serviceDelegate);
-    expect(_mockFallbackLoginService.login(anyString(), anyObject(), anyObject())).andReturn(result);
+    RoleDelegateUserIdentity result = new RoleDelegateUserIdentity(subject, servicePrincipal, serviceDelegate);
+    expect(_mockFallbackLoginService.login(anyString(), anyObject(), anyObject(), anyObject())).andReturn(result);
 
     TestAuthorizer userAuthorizer = new TestAuthorizer(TEST_USER);
 
     HttpServletRequest mockRequest = mock(HttpServletRequest.class);
-    replay(_mockFallbackLoginService);
+    expect(mockRequest.getParameter(DO_AS)).andReturn(null).anyTimes();
+    replay(_mockFallbackLoginService, mockRequest);
 
     TrustedProxyLoginService trustedProxyLoginService = new TrustedProxyLoginService(_mockSpnegoLoginService, _mockFallbackLoginService,
             userAuthorizer, true);
-    UserIdentity doAsIdentity = trustedProxyLoginService.login(null, ENCODED_TOKEN, mockRequest);
+    UserIdentity doAsIdentity = trustedProxyLoginService.login(null, ENCODED_TOKEN, wrapRequest(mockRequest), null);
     assertNotNull(doAsIdentity);
     assertNotNull(doAsIdentity.getUserPrincipal());
     assertEquals(servicePrincipal, doAsIdentity.getUserPrincipal());
@@ -147,20 +153,20 @@ public class TrustedProxyLoginServiceTest {
   public void testTrustedProxyWithKerberosRules() {
     String username = "user1";
     String proxy = "proxy2@realm";
-    SpnegoUserPrincipal servicePrincipal = new SpnegoUserPrincipal(proxy, ENCODED_TOKEN);
+    SPNEGOUserPrincipal servicePrincipal = new SPNEGOUserPrincipal(proxy, ENCODED_TOKEN);
     UserIdentity serviceDelegate = mock(UserIdentity.class);
     Subject subject = new Subject(true, Collections.singleton(servicePrincipal), Collections.emptySet(), Collections.emptySet());
-    SpnegoUserIdentity result = new SpnegoUserIdentity(subject, servicePrincipal, serviceDelegate);
-    expect(_mockSpnegoLoginService.login(anyString(), anyObject(), anyObject())).andReturn(result);
+    RoleDelegateUserIdentity result = new RoleDelegateUserIdentity(subject, servicePrincipal, serviceDelegate);
+    expect(_mockSpnegoLoginService.login(anyString(), anyObject(), anyObject(), anyObject())).andReturn(result);
 
     TestAuthorizer userAuthorizer = new TestAuthorizer(username);
     HttpServletRequest mockRequest = mock(HttpServletRequest.class);
-    expect(mockRequest.getParameter(DO_AS)).andReturn(username);
+    expect(mockRequest.getParameter(DO_AS)).andReturn(username).anyTimes();
     replay(_mockSpnegoLoginService, mockRequest);
     TrustedProxyLoginService trustedProxyLoginService = new TrustedProxyLoginService(_mockSpnegoLoginService, _mockFallbackLoginService,
             userAuthorizer, false);
 
-    UserIdentity doAsIdentity = trustedProxyLoginService.login(proxy, ENCODED_TOKEN, mockRequest);
+    UserIdentity doAsIdentity = trustedProxyLoginService.login(proxy, ENCODED_TOKEN, wrapRequest(mockRequest), null);
 
     assertNotNull(doAsIdentity);
     assertNotNull(doAsIdentity.getUserPrincipal());
@@ -174,26 +180,42 @@ public class TrustedProxyLoginServiceTest {
     String username = "user1";
     String principal = "user1@realm";
     String usernameReplaced = username + "foo";
-    SpnegoUserPrincipal servicePrincipal = new SpnegoUserPrincipal(usernameReplaced, ENCODED_TOKEN);
+    SPNEGOUserPrincipal servicePrincipal = new SPNEGOUserPrincipal(usernameReplaced, ENCODED_TOKEN);
     UserIdentity serviceDelegate = mock(UserIdentity.class);
     Subject subject = new Subject(true, Collections.singleton(servicePrincipal), Collections.emptySet(), Collections.emptySet());
-    SpnegoUserIdentity result = new SpnegoUserIdentity(subject, servicePrincipal, serviceDelegate);
-    expect(_mockFallbackLoginService.login(anyString(), anyObject(), anyObject())).andReturn(result);
+    RoleDelegateUserIdentity result = new RoleDelegateUserIdentity(subject, servicePrincipal, serviceDelegate);
+    expect(_mockFallbackLoginService.login(anyString(), anyObject(), anyObject(), anyObject())).andReturn(result);
 
     TestAuthorizer userAuthorizer = new TestAuthorizer(username);
     HttpServletRequest mockRequest = mock(HttpServletRequest.class);
-    replay(_mockFallbackLoginService);
+    expect(mockRequest.getParameter(DO_AS)).andReturn(null).anyTimes();
+    replay(_mockFallbackLoginService, mockRequest);
     TrustedProxyLoginService trustedProxyLoginService = new TrustedProxyLoginService(_mockSpnegoLoginService, _mockFallbackLoginService,
             userAuthorizer, true);
 
-    UserIdentity doAsIdentity = trustedProxyLoginService.login(principal, ENCODED_TOKEN, mockRequest);
+    UserIdentity doAsIdentity = trustedProxyLoginService.login(principal, ENCODED_TOKEN, wrapRequest(mockRequest), null);
 
     assertNotNull(doAsIdentity);
     assertNotNull(doAsIdentity.getUserPrincipal());
-    SpnegoUserPrincipal doAsPrincipal = (SpnegoUserPrincipal) doAsIdentity.getUserPrincipal();
+    SPNEGOUserPrincipal doAsPrincipal = (SPNEGOUserPrincipal) doAsIdentity.getUserPrincipal();
     assertEquals(servicePrincipal.getName(), doAsPrincipal.getName());
-    assertTrue(((SpnegoUserIdentity) doAsIdentity).isEstablished());
+    assertTrue(((RoleDelegateUserIdentity) doAsIdentity).isEstablished());
     verify(_mockFallbackLoginService);
+  }
+
+  /**
+   * Wraps an {@link HttpServletRequest} mock in a Jetty {@link Request} mock so that tests
+   * can pass a Jetty-typed request to the login service.
+   * The DO_AS parameter is forwarded from the HttpServletRequest to the Jetty Request.
+   */
+  private Request wrapRequest(HttpServletRequest httpRequest) {
+    Request mockJettyRequest = mock(Request.class);
+    // Forward DO_AS parameter (may be null)
+    String doAs = httpRequest == null ? null : httpRequest.getParameter(DO_AS);
+    expect(mockJettyRequest.getParameter(DO_AS)).andReturn(doAs).anyTimes();
+    expect(mockJettyRequest.getAttribute(HTTP_SERVLET_REQUEST_ATTRIBUTE)).andReturn(httpRequest).anyTimes();
+    replay(mockJettyRequest);
+    return mockJettyRequest;
   }
 
 }
